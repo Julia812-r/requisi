@@ -25,6 +25,7 @@ worksheet_almox = sh_almox.sheet1
 
 # --- Funções para salvar no Google Sheets ---
 def salvar_requisicao_google_sheets(data_dict):
+    print("⚡ Enviando para Google Sheets...")
     row = [
         data_dict['Número Solicitação'],
         data_dict['Nome do Solicitante'],
@@ -45,6 +46,7 @@ def salvar_requisicao_google_sheets(data_dict):
     worksheet_req.append_row(row, value_input_option="USER_ENTERED")
 
 def salvar_almox_google_sheets(data_dict):
+    print("⚡ Enviando para Google Sheets...")
     row = [
         data_dict['Nome do Solicitante'],
         data_dict['MABEC'],
