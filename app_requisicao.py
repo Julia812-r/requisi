@@ -4,6 +4,56 @@ import os
 import base64
 from datetime import datetime
 
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# --- Configuração Google Sheets ---
+# Coloque aqui o nome do arquivo JSON das credenciais que você baixou do Google Cloud
+GOOGLE_CREDENTIALS_FILE = "credenciais.json"
+
+# IDs das planilhas Google (só o ID, sem /edit etc)
+SHEET_ID_REQ = "1C9YlVdnnCDk6FvTT6SHb20Sf9SGwB9DN7d49hrv-XNc"  # coloque seu ID real aqui
+SHEET_ID_ALMOX = "1W4CEtZLRgOJ0TrZ1A8wjDx-esVBJo-ba_NRoIyqDFCw"  # substitua pelo ID correto
+
+# Autenticação e acesso
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+gc = gspread.service_account(filename=GOOGLE_CREDENTIALS_FILE)
+sh_req = gc.open_by_key(SHEET_ID_REQ)
+worksheet_req = sh_req.sheet1
+sh_almox = gc.open_by_key(SHEET_ID_ALMOX)
+worksheet_almox = sh_almox.sheet1
+
+# --- Funções para salvar no Google Sheets ---
+def salvar_requisicao_google_sheets(data_dict):
+    row = [
+        data_dict['Número Solicitação'],
+        data_dict['Nome do Solicitante'],
+        data_dict['Métier'],
+        data_dict['Tipo'],
+        str(data_dict['Itens']),
+        data_dict['Linha de Projeto'],
+        data_dict['Produto Novo ou Previsto'],
+        data_dict['Demanda Nova ou Prevista'],
+        data_dict['Valor Total'],
+        data_dict['Caminho Orçamento'],
+        data_dict['Comentários'],
+        data_dict['Riscos'],
+        data_dict['Status'],
+        data_dict['Data Solicitação'],
+        data_dict['Tipo de Compra']
+    ]
+    worksheet_req.append_row(row, value_input_option="USER_ENTERED")
+
+def salvar_almox_google_sheets(data_dict):
+    row = [
+        data_dict['Nome do Solicitante'],
+        data_dict['MABEC'],
+        data_dict['Descrição do Produto'],
+        data_dict['Quantidade'],
+        data_dict['Data Solicitação']
+    ]
+    worksheet_almox.append_row(row, value_input_option="USER_ENTERED")
+
 # Caminho dos arquivos
 REQ_FILE = "requisicoes.csv"
 ALMOX_FILE = "almox.csv"
@@ -188,8 +238,30 @@ if aba == "Nova Solicitação de Requisição":
 
             st.session_state.df_requisicoes = pd.concat([st.session_state.df_requisicoes, nova_linha], ignore_index=True)
             st.session_state.df_requisicoes.to_csv(REQ_FILE, index=False)
+            
+            # Salvar no Google Sheets
+            salvar_requisicao_google_sheets({
+                'Número Solicitação': numero,
+                'Nome do Solicitante': nome,
+                'Métier': metier,
+                'Tipo': tipo,
+                'Itens': st.session_state.itens,
+                'Linha de Projeto': projeto,
+                'Produto Novo ou Previsto': novo_previsto,
+                'Demanda Nova ou Prevista': demanda_tipo,
+                'Valor Total': valor_total,
+                'Caminho Orçamento': caminho_arquivo,
+                'Comentários': comentarios,
+                'Riscos': riscos,
+                'Status': 'Aprovação Comitê de Compras',
+                'Data Solicitação': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'Tipo de Compra': tipo_compra
+            })
+            
             st.session_state.itens = []
             st.success(f"Solicitação enviada com sucesso! Número: {numero}")
+
+
 
 # ---- ABA STATUS ----
 elif aba == "Conferir Status de Solicitação":
@@ -245,6 +317,11 @@ elif aba == "Solicitação Almox":
                 nova_df = pd.DataFrame(st.session_state.almox_itens)
                 st.session_state.df_almox = pd.concat([st.session_state.df_almox, nova_df], ignore_index=True)
                 st.session_state.df_almox.to_csv(ALMOX_FILE, index=False)
+
+                # Salvar cada item no Google Sheets
+                for item in st.session_state.almox_itens:
+                    salvar_almox_google_sheets(item)
+
                 st.session_state.almox_itens = []
                 st.success("Solicitação de almoxarifado enviada com sucesso!")
 
